@@ -21,47 +21,20 @@ import 'package:react/src/typedefs.dart';
 import 'package:react/src/ddc_emulated_function_name_bug.dart' as ddc_emulated_function_name_bug;
 
 export 'package:react/react_client/react_interop.dart' show ReactElement, ReactJsComponentFactory, inReactDevMode;
+export 'package:react/react.dart' show ReactComponentFactoryProxy, ComponentFactory;
 
 final EmptyObject emptyJsMap = new EmptyObject();
 
-/// Type of [children] must be child or list of children, when child is [ReactElement] or [String]
+/// __Deprecated.__ Use [ReactComponentFactoryProxy] instead.
+///
+/// > Type of [children] must be child or list of children, when child is [ReactElement] or [String]
+@Deprecated('5.0.0')
 typedef ReactElement ReactComponentFactory(Map props, [dynamic children]);
-typedef Component ComponentFactory();
 
 /// The type of [Component.ref] specified as a callback.
 ///
 /// See: <https://facebook.github.io/react/docs/more-about-refs.html#the-ref-callback-attribute>
 typedef _CallbackRef(componentOrDomNode);
-
-/// Creates ReactJS [ReactElement] instances.
-abstract class ReactComponentFactoryProxy implements Function {
-  /// The type of component created by this factory.
-  get type;
-
-  /// Returns a new rendered component instance with the specified [props] and [children].
-  ///
-  /// Necessary to work around DDC `dart.dcall` issues in <https://github.com/dart-lang/sdk/issues/29904>,
-  /// since invoking the function directly doesn't work.
-  ReactElement build(Map props, [List childrenArgs]);
-
-  /// Returns a new rendered component instance with the specified [props] and [children].
-  ///
-  /// We need a concrete implementation of this, as opposed to it just being handled by [noSuchMethod],
-  /// in order to work around DDC issue <https://github.com/dart-lang/sdk/issues/29917>.
-  ReactElement call(Map props, [dynamic children]) => build(props, [children]);
-
-  @override
-  dynamic noSuchMethod(Invocation invocation) {
-    if (invocation.memberName == #call && invocation.isMethod) {
-      Map props = invocation.positionalArguments[0];
-      List children = invocation.positionalArguments.sublist(1);
-
-      return build(props, children);
-    }
-
-    return super.noSuchMethod(invocation);
-  }
-}
 
 /// Prepares [children] to be passed to the ReactJS [React.createElement] and
 /// the Dart [react.Component].
@@ -263,7 +236,7 @@ final ReactDartInteropStatics _dartInteropStatics = (() {
   }
 
   void _callSetStateCallbacks(Component component) {
-    component.setStateCallbacks.forEach((callback()) { callback(); });
+    component.setStateCallbacks.forEach((callback) { callback(); });
     component.setStateCallbacks.clear();
   }
 
@@ -364,7 +337,7 @@ final ReactDartInteropStatics _dartInteropStatics = (() {
   );
 })();
 
-/// Returns a new [ReactComponentFactory] which produces a new JS
+/// Returns a new `ReactComponentFactory` which produces a new JS
 /// [`ReactClass` component class](https://facebook.github.io/react/docs/top-level-api.html#react.createclass).
 ReactDartComponentFactoryProxy _registerComponent(ComponentFactory componentFactory, [Iterable<String> skipMethods = const []]) {
   var componentInstance = componentFactory();

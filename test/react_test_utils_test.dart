@@ -223,11 +223,11 @@ void main() {
 
   group('isElementOfType', () {
     test('returns true argument is an element of type', () {
-      expect(isElementOfType(div({}), div as ReactComponentFactory), isTrue);
+      expect(isElementOfType(div({}), div as ReactComponentFactoryProxy), isTrue);
     });
 
     test('returns false argument is not an element of type', () {
-      expect(isElementOfType(div({}), span as ReactComponentFactory), isFalse);
+      expect(isElementOfType(div({}), span as ReactComponentFactoryProxy), isFalse);
     });
   });
 

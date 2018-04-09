@@ -31,7 +31,7 @@ import 'package:react/src/react_test_utils/simulate_wrappers.dart' as simulate_w
 ///
 /// For a DOM components, this with return the String corresponding to its tagName ('div', 'a', etc.).
 /// For React.createClass()-based components, this with return the [ReactClass].
-dynamic getComponentType(ReactComponentFactory componentFactory) {
+dynamic getComponentType(ReactComponentFactoryProxy componentFactory) {
   if (componentFactory is ReactComponentFactoryProxy) {
     return componentFactory.type;
   }
@@ -155,7 +155,7 @@ external dynamic /* [1] */ _findRenderedComponentWithType(/* [1] */ tree, dynami
 /// and returns that one result, or throws exception if there is any other
 /// number of matches besides one.
 /* [1] */ findRenderedComponentWithType(
-    /* [1] */ tree, ReactComponentFactory componentType) {
+    /* [1] */ tree, ReactComponentFactoryProxy componentType) {
   return _findRenderedComponentWithType(tree, getComponentType(componentType));
 }
 
@@ -175,7 +175,7 @@ external bool _isCompositeComponentWithType(/* [1] */ instance, dynamic type);
 
 /// Returns true if instance is a composite component.
 /// (created with React.createClass()) whose type is of a React componentClass.
-bool isCompositeComponentWithType(/* [1] */ instance, ReactComponentFactory componentClass) {
+bool isCompositeComponentWithType(/* [1] */ instance, ReactComponentFactoryProxy componentClass) {
   return _isCompositeComponentWithType(instance, getComponentType(componentClass));
 }
 
@@ -192,7 +192,7 @@ external bool _isElementOfType(dynamic element, dynamic componentClass);
 
 /// Returns true if [element] is a ReactElement whose type is of a
 /// React componentClass.
-bool isElementOfType(dynamic element, ReactComponentFactory componentFactory) {
+bool isElementOfType(dynamic element, ReactComponentFactoryProxy componentFactory) {
   return _isElementOfType(element, getComponentType(componentFactory));
 }
 
@@ -200,7 +200,7 @@ bool isElementOfType(dynamic element, ReactComponentFactory componentFactory) {
 external List<dynamic> /* [1] */ _scryRenderedComponentsWithType(/* [1] */ tree, dynamic type);
 
 /// Finds all instances of components with type equal to componentClass.
-List<dynamic> /* [1] */ scryRenderedComponentsWithType(/* [1] */ tree, ReactComponentFactory componentClass) {
+List<dynamic> /* [1] */ scryRenderedComponentsWithType(/* [1] */ tree, ReactComponentFactoryProxy componentClass) {
   return _scryRenderedComponentsWithType(tree, getComponentType(componentClass));
 }
 

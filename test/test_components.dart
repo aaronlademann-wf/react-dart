@@ -1,5 +1,4 @@
 import 'package:react/react.dart';
-import 'package:react/react_client.dart' show ReactComponentFactory;
 
 
 /// Base component for event handling classes used in test cases.
@@ -45,8 +44,8 @@ class EventComponent extends Component {
       state['text']
   );
 }
-ReactComponentFactory eventComponent = registerComponent(() =>
-    new EventComponent()) as ReactComponentFactory;
+ReactComponentFactoryProxy eventComponent = registerComponent(() =>
+    new EventComponent());
 
 class SampleComponent extends Component {
   render() => div(props, [
@@ -57,12 +56,12 @@ class SampleComponent extends Component {
   ]);
 }
 
-ReactComponentFactory sampleComponent = registerComponent(() =>
-    new SampleComponent()) as ReactComponentFactory;
+ReactComponentFactoryProxy sampleComponent = registerComponent(() =>
+    new SampleComponent());
 
 class WrapperComponent extends Component {
   render() => div(props, props['children']);
 }
 
-ReactComponentFactory wrapperComponent = registerComponent(() =>
-    new WrapperComponent()) as ReactComponentFactory;
+ReactComponentFactoryProxy wrapperComponent = registerComponent(() =>
+    new WrapperComponent());

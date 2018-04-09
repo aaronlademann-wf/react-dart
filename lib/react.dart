@@ -5,7 +5,11 @@
 /// A Dart library for building UI using ReactJS.
 library react;
 
+import 'package:react/react_client/react_interop.dart';
 import 'package:react/src/typedefs.dart';
+
+typedef Component ComponentFactory();
+typedef ReactComponentFactoryProxy ComponentRegistrar(ComponentFactory componentFactory, [Iterable<String> skipMethods]);
 
 /// Top-level ReactJS [Component class](https://facebook.github.io/react/docs/react-component.html)
 /// which provides the [ReactJS Component API](https://facebook.github.io/react/docs/react-component.html#reference)
@@ -68,15 +72,15 @@ abstract class Component {
 
   dynamic _jsThis;
 
-  List _setStateCallbacks = [];
+  List<Function> _setStateCallbacks = [];
 
-  List _transactionalSetStateCallbacks = [];
+  List<TransactionalSetStateCallback> _transactionalSetStateCallbacks = [];
 
   /// The List of callbacks to be called after the component has been updated from a call to [setState].
-  List get setStateCallbacks => _setStateCallbacks;
+  List<Function> get setStateCallbacks => _setStateCallbacks;
 
   /// The List of transactional `setState` callbacks to be called before the component updates.
-  List get transactionalSetStateCallbacks => _transactionalSetStateCallbacks;
+  List<TransactionalSetStateCallback> get transactionalSetStateCallbacks => _transactionalSetStateCallbacks;
 
   /// The JavaScript [`ReactComponent`](https://facebook.github.io/react/docs/top-level-api.html#reactdom.render)
   /// instance of this `Component` returned by [render].
@@ -359,6 +363,42 @@ abstract class Component {
   dynamic render();
 }
 
+/// Creates ReactJS [ReactElement] instances.
+abstract class ReactComponentFactoryProxy implements Function {
+  /// The type of component created by this factory.
+  get type;
+
+  /// Returns a new rendered component instance with the specified [props] and [children].
+  ///
+  /// Necessary to work around DDC `dart.dcall` issues in <https://github.com/dart-lang/sdk/issues/29904>,
+  /// since invoking the function directly doesn't work.
+  dynamic/*ReactElement*/ build(Map props, [List childrenArgs]);
+
+  /// Returns a new rendered component instance with the specified [props] and [children].
+  ///
+  /// We need a concrete implementation of this, as opposed to it just being handled by [noSuchMethod],
+  /// in order to work around DDC issue <https://github.com/dart-lang/sdk/issues/29917>.
+  dynamic/*ReactElement*/ call(Map props, [dynamic children]) => build(props, [children]);
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) {
+    if (invocation.memberName == #call && invocation.isMethod) {
+      Map props = invocation.positionalArguments[0];
+      List children = invocation.positionalArguments.sublist(1);
+
+      return build(props, children);
+    }
+
+    return super.noSuchMethod(invocation);
+  }
+}
+
+class _ReactComponentFactoryProxy extends ReactComponentFactoryProxy {
+  @override
+  ReactElement call(Map props, [dynamic children]) =>
+      throw new Exception('setClientConfiguration must be called before registerComponent.');
+}
+
 /// Typedef of a transactional [Component.setState] callback.
 ///
 /// See: <https://facebook.github.io/react/docs/react-component.html#setstate>
@@ -623,9 +663,7 @@ class SyntheticWheelEvent extends SyntheticEvent {
 }
 
 /// Registers [componentFactory] on both client and server.
-Function registerComponent = (componentFactory, [skipMethods]) {
-  throw new Exception('setClientConfiguration must be called before registerComponent.');
-};
+ComponentRegistrar registerComponent = (ComponentFactory componentFactory, [Iterable<String> skipMethods]) => new _ReactComponentFactoryProxy();
 
 /// The HTML `<a>` [AnchorElement].
 var a;
