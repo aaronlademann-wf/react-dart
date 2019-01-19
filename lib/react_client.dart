@@ -14,6 +14,7 @@ import "package:js/js.dart";
 import "package:react/react.dart";
 import "package:react/react_client/js_interop_helpers.dart";
 import 'package:react/react_client/react_interop.dart';
+import 'package:react/react_client/shadow_dom.dart';
 import "package:react/react_dom.dart";
 import "package:react/react_dom_server.dart";
 import "package:react/src/react_client/synthetic_event_wrappers.dart" as events;
@@ -22,6 +23,7 @@ import 'package:react/src/ddc_emulated_function_name_bug.dart' as ddc_emulated_f
 
 export 'package:react/react_client/react_interop.dart' show ReactElement, ReactJsComponentFactory, inReactDevMode;
 export 'package:react/react.dart' show ReactComponentFactoryProxy, ComponentFactory;
+export 'package:react/react_client/shadow_dom.dart';
 
 final EmptyObject emptyJsMap = new EmptyObject();
 
@@ -75,7 +77,9 @@ class ReactDartComponentFactoryProxy<TComponent extends Component> extends React
   /// into [generateExtendedJsProps] upon [ReactElement] creation.
   final Map defaultProps;
 
-  ReactDartComponentFactoryProxy(ReactClass reactClass) :
+  final List<String> styles;
+
+  ReactDartComponentFactoryProxy(ReactClass reactClass, {this.styles: const []}) :
       this.reactClass = reactClass,
       this.reactComponentFactory = React.createFactory(reactClass),
       this.defaultProps = reactClass.dartDefaultProps;
@@ -86,10 +90,23 @@ class ReactDartComponentFactoryProxy<TComponent extends Component> extends React
     var children = _convertArgsToChildren(childrenArgs);
     children = listifyChildren(children);
 
+    if (this.styles.isNotEmpty) {
+      props = {
+        'key': props['key'] ?? 'styled-component',
+        '@@componentStyles': this.styles,
+      }..addAll(props);
+    }
+
     return reactComponentFactory(
       generateExtendedJsProps(props, children, defaultProps: defaultProps),
       children
     );
+
+//    if (this.styles.isNotEmpty) {
+//      return shadowDom({'customElementStyles': this.styles.join('\n')}, [componentFactory]);
+//    } else {
+//      return componentFactory;
+//    }
   }
 
   /// Returns a JavaScript version of the specified [props], preprocessed for consumption by ReactJS and prepared for
@@ -349,7 +366,10 @@ final ReactDartInteropStatics _dartInteropStatics = (() {
 
 /// Creates and returns a new [ReactDartComponentFactoryProxy] from the provided [componentFactory]
 /// which produces a new JS [`ReactClass` component class](https://facebook.github.io/react/docs/top-level-api.html#react.createclass).
-ReactDartComponentFactoryProxy _registerComponent(ComponentFactory componentFactory, [Iterable<String> skipMethods = const []]) {
+ReactDartComponentFactoryProxy _registerComponent(ComponentFactory componentFactory, [
+  Iterable<String> skipMethods = const [],
+  List<String> styles = const [],
+]) {
   var componentInstance = componentFactory();
   var componentStatics = new ComponentStatics(componentFactory);
 
@@ -370,7 +390,7 @@ ReactDartComponentFactoryProxy _registerComponent(ComponentFactory componentFact
   final Map defaultProps = new Map.unmodifiable(componentInstance.getDefaultProps());
   reactComponentClass.dartDefaultProps = defaultProps;
 
-  return new ReactDartComponentFactoryProxy(reactComponentClass);
+  return new ReactDartComponentFactoryProxy(reactComponentClass, styles: styles);
 }
 
 /// Creates ReactJS [ReactElement] instances for DOM components.
@@ -696,6 +716,90 @@ SyntheticWheelEvent syntheticWheelEventFactory(events.SyntheticWheelEvent e) {
 dynamic _findDomNode(component) {
   return ReactDom.findDOMNode(component is Component ? component.jsThis : component);
 }
+//
+///// Returns internal data structure used by react-dart to maintain the native Dart component
+///// for a given react-dart [ReactElement] or [ReactComponent] [instance].
+//ReactDartComponentInternal _getInternal(/* ReactElement|ReactComponent */  instance) =>
+//    (instance.props as InteropProps).internal; // ignore: avoid_as
+//
+///// Dart wrapper for React.isValidElement.
+/////
+///// _From the JS docs:_
+///// > Verifies the object is a ReactElement
+//bool isValidElement(dynamic object) {
+//  return React.isValidElement(object);
+//}
+//
+///// Returns whether [instance] is a ReactElement for a DOM node.
+//bool isDomElement(dynamic instance) {
+//  return isValidElement(instance) && (instance as ReactElement).type is String; // ignore: avoid_as
+//}
+//
+///// Returns a new JS map with the specified props and children changes, properly prepared for consumption by
+///// React JS methods such as `cloneElement`, `setProps`, and other methods that accept changesets of props to be
+///// merged into existing props.
+/////
+///// Handles both Dart and JS React components, returning the appropriate props structure for each type:
+/////
+///// * For Dart components, existing props are read from [InteropProps.internal], which are then merged with
+/////   the new [newProps] and saved in a new [InteropProps] with the expected [ReactDartComponentInternal] structure.
+///// * Children are likewise copied and potentially overwritten with [newChildren] as expected.
+///// * For JS components, a copy of [newProps] is returned, since React will merge the props without any special handling.
+//dynamic preparePropsChangeset(ReactElement element, Map newProps, [Iterable newChildren]) {
+//  var propsChangeset;
+//
+//  final internal = _getInternal(element);
+//  if (internal == null) {
+//    // Plain JS component
+//    if (newProps == null) {
+//      propsChangeset = null;
+//    } else {
+//      if (isDomElement(element)) {
+//        // Convert props for DOM components so that style Maps and event handlers
+//        // are properly converted.
+//        Map convertedProps = new Map.from(newProps);
+//        ReactDomComponentFactoryProxy.convertProps(convertedProps);
+//        propsChangeset = jsify(convertedProps);
+//      } else {
+//        propsChangeset = jsify(newProps);
+//      }
+//    }
+//  } else {
+//    // react-dart component
+//    Map oldExtendedProps = internal.props;
+//
+//    Map extendedProps = new Map.from(oldExtendedProps);
+//    if (newProps != null) {
+//      extendedProps.addAll(newProps);
+//    }
+//
+//    propsChangeset = ReactDartComponentFactoryProxy.generateExtendedJsProps(extendedProps, newChildren ?? extendedProps['children']);
+//  }
+//
+//  return propsChangeset;
+//}
+//
+//@JS('React.cloneElement')
+//external ReactElement _cloneElement(element, [props, children]);
+//
+///// Dart wrapper for React.cloneElement.
+/////
+///// _From the JS docs:_
+///// > Clone and return a new ReactElement using element as the starting point.
+///// > The resulting element will have the original element's props with the new props merged in shallowly.
+///// > New children will replace existing children.
+///// > Unlike React.addons.cloneWithProps, key and ref from the original element will be preserved.
+///// > There is no special behavior for merging any props (unlike cloneWithProps).
+///// > See the [v0.13 RC2 blog post](https://facebook.github.io/react/blog/2015/03/03/react-v0.13-rc2.html) for additional details.
+//ReactElement cloneElement(ReactElement element, [Map props, Iterable children]) {
+//  var propsChangeset = preparePropsChangeset(element, props, children);
+//
+//  if (children != null) {
+//    return _cloneElement(element, propsChangeset, children);
+//  } else {
+//    return _cloneElement(element, propsChangeset);
+//  }
+//}
 
 void setClientConfiguration() {
   try {
@@ -717,3 +821,7 @@ void setClientConfiguration() {
     setReactDOMServerConfiguration(ReactDomServer.renderToString, ReactDomServer.renderToStaticMarkup);
   }
 }
+
+
+
+

@@ -28,8 +28,8 @@ abstract class React {
 
 abstract class ReactDom {
   static Element findDOMNode(object) => ReactDOM.findDOMNode(object);
-  static ReactComponent render(ReactElement component, Element element) => ReactDOM.render(component, element);
-  static bool unmountComponentAtNode(Element element) => ReactDOM.unmountComponentAtNode(element);
+  static ReactComponent render(ReactElement component, Node element) => ReactDOM.render(component, element);
+  static bool unmountComponentAtNode(Node element) => ReactDOM.unmountComponentAtNode(element);
 }
 
 @JS('ReactDOMServer')

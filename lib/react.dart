@@ -5,10 +5,13 @@
 /// A Dart library for building UI using ReactJS.
 library react;
 
+import 'package:meta/meta.dart';
 import 'package:react/src/typedefs.dart';
+import 'package:react/src/wc/shadow_css.dart';
+import 'package:react/src/wc/web_component.dart';
 
 typedef Component ComponentFactory();
-typedef ReactComponentFactoryProxy ComponentRegistrar(ComponentFactory componentFactory, [Iterable<String> skipMethods]);
+typedef ReactComponentFactoryProxy ComponentRegistrar(ComponentFactory componentFactory, [Iterable<String> skipMethods, List<String> styles]);
 
 /// Top-level ReactJS [Component class](https://facebook.github.io/react/docs/react-component.html)
 /// which provides the [ReactJS Component API](https://facebook.github.io/react/docs/react-component.html#reference)
@@ -667,7 +670,7 @@ class SyntheticWheelEvent extends SyntheticEvent {
 }
 
 /// Registers [componentFactory] on both client and server.
-/*ComponentRegistrar*/Function registerComponent = (/*ComponentFactory*/componentFactory, [/*Iterable<String>*/ skipMethods]) {
+/*ComponentRegistrar*/Function registerComponent = (/*ComponentFactory*/componentFactory, [/*Iterable<String>*/ skipMethods, /*list<String>*/ styles]) {
   throw new Exception('setClientConfiguration must be called before registerComponent.');
 };
 
@@ -1267,6 +1270,8 @@ var view;
 /// The SVG `<vkern>` [VkernElement].
 var vkern;
 
+var geocodesSearchButton;
+
 /// Create React DOM `Component`s by calling the specified [creator].
 _createDOMComponents(creator){
   a = creator('a');
@@ -1469,6 +1474,8 @@ _createDOMComponents(creator){
   use = creator('use');
   view = creator('view');
   vkern = creator('vkern');
+
+  geocodesSearchButton = creator('geocodes-search-button');
 }
 
 /// Set configuration based on functions provided as arguments.
@@ -1477,6 +1484,17 @@ _createDOMComponents(creator){
 /// [_createDOMComponents] with [domCreator].
 setReactConfiguration(domCreator, customRegisterComponent){
   registerComponent = customRegisterComponent;
+  _domCreator = domCreator;
   // HTML Elements
   _createDOMComponents(domCreator);
+}
+
+Function _domCreator;
+
+var _customWebComponents = <String, WebComponent>{};
+var customWebElements = <String, dynamic>{};
+
+dynamic registerCustomElement(String name) {
+  customWebElements[name] = _domCreator(name);
+  return customWebElements[name];
 }
