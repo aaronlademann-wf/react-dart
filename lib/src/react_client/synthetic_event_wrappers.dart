@@ -22,15 +22,32 @@ class SyntheticEvent {
   external String get type;
 
   external void stopPropagation();
+  external void isPropagationStopped();
+
   external void preventDefault();
+  external bool isDefaultPrevented();
 
   external void persist();
 }
 
 @JS()
 @anonymous
+class SyntheticAnimationEvent extends SyntheticEvent {
+  external String get animationName;
+  external String get pseudoElement;
+  external num get elapsedTime;
+}
+
+@JS()
+@anonymous
 class SyntheticClipboardEvent extends SyntheticEvent {
   external get clipboardData;
+}
+
+@JS()
+@anonymous
+class SyntheticCompositionEvent extends SyntheticEvent {
+  external String get data;
 }
 
 @JS()
@@ -47,6 +64,7 @@ class SyntheticKeyboardEvent extends SyntheticEvent {
   external bool get shiftKey;
   external num get keyCode;
   external num get charCode;
+  external bool getModifierState(String modifierKey);
 }
 
 @JS()
@@ -65,6 +83,7 @@ class SyntheticDataTransfer {
   external String get dropEffect;
   external String get effectAllowed;
   external List<File> get files;
+  external DataTransferItemList get items;
   external List<String> get types;
 }
 
@@ -85,6 +104,7 @@ class SyntheticMouseEvent extends SyntheticEvent {
   external num get screenX;
   external num get screenY;
   external bool get shiftKey;
+  external bool getModifierState(String modifierKey);
 }
 
 @JS()
@@ -112,6 +132,15 @@ class SyntheticTouchEvent extends SyntheticEvent {
   external bool get shiftKey;
   external TouchList get targetTouches;
   external TouchList get touches;
+  external bool getModifierState(String modifierKey);
+}
+
+@JS()
+@anonymous
+class SyntheticTransitionEvent extends SyntheticEvent {
+  external String get propertyName;
+  external String get pseudoElement;
+  external num get elapsedTime;
 }
 
 @JS()

@@ -2,16 +2,11 @@ import 'package:react/src/react_client/synthetic_event2_factories.dart';
 
 /// A mapping from event prop keys to their respective event factories.
 ///
-/// Used in `_convertEventHandlers` for efficient event handler conversion
-/// in `Component` / `Component2` instances.
+/// Used in `_convertEventHandlers2` for efficient event handler conversion
+/// in `Component2` instances.
 ///
 /// > See: <https://reactjs.org/docs/events.html#supported-events>
-///
-/// __DEPRECATED.__
-///
-/// Start using `eventPropKeyToEventFactory2` when migrating to `SyntheticEvent2`.
-@Deprecated('6.0.0')
-final Map<String, Function> eventPropKeyToEventFactory = (() {
+final Map<String, Function> eventPropKeyToEventFactory2 = (() {
   var _eventPropKeyToEventFactory = <String, Function>{
     // SyntheticAnimationEvent
     'onAnimationStart': syntheticAnimationEvent2Factory,

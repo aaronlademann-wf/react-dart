@@ -16,6 +16,7 @@ import "package:react/react_client/js_interop_helpers.dart";
 import 'package:react/react_client/react_interop.dart';
 import "package:react/react_dom.dart";
 import "package:react/src/react_client/event_prop_key_to_event_factory.dart";
+import 'package:react/src/react_client/event_prop_key_to_event_factory2.dart';
 import 'package:react/src/react_client/js_backed_map.dart';
 import "package:react/src/react_client/synthetic_event_wrappers.dart" as events;
 import 'package:react/src/typedefs.dart';
@@ -26,6 +27,7 @@ export 'package:react/react_client/react_interop.dart'
     show ReactElement, ReactJsComponentFactory, inReactDevMode;
 export 'package:react/react.dart'
     show ReactComponentFactoryProxy, ComponentFactory;
+export 'package:react/src/react_client/synthetic_event2.dart';
 
 final EmptyObject emptyJsMap = new EmptyObject();
 
@@ -221,6 +223,7 @@ dynamic _convertArgsToChildren(List childrenArgs) {
 @JS('Object.keys')
 external List<String> _objectKeys(Object object);
 
+@Deprecated('6.0.0')
 InteropContextValue _jsifyContext(Map<String, dynamic> context) {
   var interopContext = new InteropContextValue();
   context.forEach((key, value) {
@@ -230,6 +233,7 @@ InteropContextValue _jsifyContext(Map<String, dynamic> context) {
   return interopContext;
 }
 
+@Deprecated('6.0.0')
 Map<String, dynamic> _unjsifyContext(InteropContextValue interopContext) {
   // TODO consider using `contextKeys` for this if perf of objectKeys is bad.
   return new Map.fromIterable(_objectKeys(interopContext), value: (key) {
@@ -239,7 +243,7 @@ Map<String, dynamic> _unjsifyContext(InteropContextValue interopContext) {
 }
 
 /// The static methods that proxy JS component lifecycle methods to Dart components.
-// TODO: Remove in the 6.0.0 release
+@Deprecated('6.0.0')
 final ReactDartInteropStatics _dartInteropStatics = (() {
   var zone = Zone.current;
 
@@ -496,10 +500,12 @@ final ReactDartInteropStatics2 _dartInteropStatics2 = (() {
         return component;
       });
 
+  // TODO: CPLAT-4765, figure out what we want to do with getInitialState when it contains prop values
   JsMap handleGetInitialState(Component2 component) => zone.run(() {
         return jsBackingMapOrJsCopy(component.getInitialState());
       });
 
+  // TODO: CPLAT-4765
   void handleComponentWillMount(Component2 component, ReactComponent jsThis) =>
       zone.run(() {
         component
@@ -511,6 +517,7 @@ final ReactDartInteropStatics2 _dartInteropStatics2 = (() {
         component.componentDidMount();
       });
 
+  // TODO: CPLAT-4767, should this throw an unimplemented error?
   void handleComponentWillReceiveProps(
           Component2 component, JsMap jsNextProps) =>
       zone.run(() {
@@ -585,7 +592,7 @@ final ReactDartInteropStatics2 _dartInteropStatics2 = (() {
 
 /// Creates and returns a new [ReactDartComponentFactoryProxy] from the provided [componentFactory]
 /// which produces a new JS [`ReactClass` component class](https://facebook.github.io/react/docs/top-level-api.html#react.createclass).
-// TODO: Remove in the 6.0.0 release
+@Deprecated('6.0.0')
 ReactDartComponentFactoryProxy _registerComponent(
     ComponentFactory componentFactory,
     [Iterable<String> skipMethods = const []]) {
@@ -645,7 +652,12 @@ ReactDartComponentFactoryProxy2 _registerComponent2(
   return new ReactDartComponentFactoryProxy2(reactComponentClass);
 }
 
-/// Creates ReactJS [ReactElement] instances for DOM components.
+/// Creates ReactJS [ReactElement] instances for DOM components instantiated by [setClientConfiguration].
+///
+/// __DEPRECATED.__
+///
+/// Start using [ReactDomComponentFactoryProxy2] when migrating to [setClientConfiguration2].
+@Deprecated('6.0.0')
 class ReactDomComponentFactoryProxy extends ReactComponentFactoryProxy {
   /// The name of the proxied DOM component.
   ///
@@ -688,9 +700,57 @@ class ReactDomComponentFactoryProxy extends ReactComponentFactoryProxy {
   }
 }
 
-/// Create react-dart registered component for the HTML [Element].
+/// Creates ReactJS [ReactElement] instances for DOM components instantiated by [setClientConfiguration2].
+class ReactDomComponentFactoryProxy2 extends ReactComponentFactoryProxy {
+  /// The name of the proxied DOM component.
+  ///
+  /// E.g. `'div'`, `'a'`, `'h1'`
+  final String name;
+
+  /// The JS component factory used by this factory to build [ReactElement]s.
+  final Function factory;
+
+  ReactDomComponentFactoryProxy2(name)
+      : this.name = name,
+        this.factory = React.createFactory(name) {
+    // TODO: Should we remove this once we validate that the bug is gone in Dart 2 DDC?
+    if (ddc_emulated_function_name_bug.isBugPresent) {
+      ddc_emulated_function_name_bug.patchName(this);
+    }
+  }
+
+  @override
+  String get type => name;
+
+  @override
+  ReactElement build(Map props, [List childrenArgs = const []]) {
+    var children = _convertArgsToChildren(childrenArgs);
+    children = listifyChildren(children);
+
+    // We can't mutate the original since we can't be certain that the value of the
+    // the converted event handler will be compatible with the Map's type parameters.
+    final convertibleProps = new JsBackedMap.from(props);
+    convertProps(convertibleProps);
+
+    return factory(convertibleProps.jsObject, children);
+  }
+
+  /// Prepares the event handlers and style props for consumption by ReactJS DOM components.
+  static void convertProps(Map props) {
+    _jsifyMapProps(props);
+    _convertEventHandlers2(props);
+  }
+}
+
+/// Create react-dart registered [Component] for the HTML [Element].
+@Deprecated('6.0.0')
 _reactDom(String name) {
   return new ReactDomComponentFactoryProxy(name);
+}
+
+/// Create react-dart registered [Component2] for the HTML [Element].
+_reactDom2(String name) {
+  return new ReactDomComponentFactoryProxy2(name);
 }
 
 /// Returns whether an [InputElement] is a [CheckboxInputElement] based the value of the `type` key in [props].
@@ -729,8 +789,7 @@ _setValueToProps(Map props, val) {
 }
 
 /// Convert bound values to pure value and packed onChange function
-///
-/// TODO: Remove in 6.0.0 when [Component.bind] is removed.
+@Deprecated('6.0.0')
 _convertBoundValues(Map args) {
   var boundValue = args['value'];
 
@@ -761,6 +820,7 @@ void _jsifyMapProps(Map map) {
 
 /// A mapping from converted/wrapped JS handler functions (the result of [_convertEventHandlers])
 /// to the original Dart functions (the input of [_convertEventHandlers]).
+@Deprecated('6.0.0')
 final Expando<Function> _originalEventHandlers = new Expando();
 
 /// Returns the props for a [ReactElement] or composite [ReactComponent] [instance],
@@ -772,6 +832,11 @@ final Expando<Function> _originalEventHandlers = new Expando();
 /// Any JS event handlers included in the props for the given [instance] will be
 /// unconverted such that the original JS handlers are returned instead of their
 /// Dart synthetic counterparts.
+///
+/// __DEPRECATED.__
+///
+/// Start using [unconvertJsProps2] when migrating to [setClientConfiguration2].
+@Deprecated('6.0.0')
 Map unconvertJsProps(/* ReactElement|ReactComponent */ instance) {
   var props = JsBackedMap.copyToDart(instance.props);
   eventPropKeyToEventFactory.keys.forEach((key) {
@@ -797,6 +862,11 @@ Map unconvertJsProps(/* ReactElement|ReactComponent */ instance) {
 /// Returns `null` if [jsConvertedEventHandler] does not represent such a function
 ///
 /// Useful for chaining event handlers on DOM or JS composite [ReactElement]s.
+///
+/// __DEPRECATED.__
+///
+/// Start using [unconvertJsEventHandler2] when migrating to [setClientConfiguration2].
+@Deprecated('6.0.0')
 Function unconvertJsEventHandler(Function jsConvertedEventHandler) {
   if (jsConvertedEventHandler == null) return null;
 
@@ -805,6 +875,7 @@ Function unconvertJsEventHandler(Function jsConvertedEventHandler) {
 
 /// Convert packed event handler into wrapper and pass it only the Dart [SyntheticEvent] object converted from the
 /// [events.SyntheticEvent] event.
+@Deprecated('6.0.0')
 _convertEventHandlers(Map args) {
   var zone = Zone.current;
   args.forEach((propKey, value) {
@@ -823,7 +894,74 @@ _convertEventHandlers(Map args) {
   });
 }
 
+/// A mapping from converted/wrapped JS handler functions (the result of [_convertEventHandlers2])
+/// to the original Dart functions (the input of [_convertEventHandlers2]).
+final Expando<Function> _originalEventHandlers2 = new Expando();
+
+/// Returns the props for a [ReactElement] or composite [ReactComponent] [instance],
+/// shallow-converted to a Dart Map for convenience.
+///
+/// If `style` is specified in props, then it too is shallow-converted and included
+/// in the returned Map.
+///
+/// Any JS event handlers included in the props for the given [instance] will be
+/// unconverted such that the original JS handlers are returned instead of their
+/// Dart synthetic counterparts.
+Map unconvertJsProps2(/* ReactElement|ReactComponent */ instance) {
+  var props = JsBackedMap.copyToDart(instance.props);
+  eventPropKeyToEventFactory2.keys.forEach((key) {
+    if (props.containsKey(key)) {
+      props[key] = unconvertJsEventHandler2(props[key]) ?? props[key];
+    }
+  });
+
+  // Convert the nested style map so it can be read by Dart code.
+  var style = props['style'];
+  if (style != null) {
+    props['style'] = JsBackedMap.copyToDart<String, dynamic>(style);
+  }
+
+  return props;
+}
+
+/// Returns the original Dart handler function that, within [_convertEventHandlers2],
+/// was converted/wrapped into the function [jsConvertedEventHandler] to be passed to the JS.
+///
+/// Returns `null` if [jsConvertedEventHandler] is `null`.
+///
+/// Returns `null` if [jsConvertedEventHandler] does not represent such a function
+///
+/// Useful for chaining event handlers on DOM or JS composite [ReactElement]s.
+Function unconvertJsEventHandler2(Function jsConvertedEventHandler) {
+  if (jsConvertedEventHandler == null) return null;
+
+  return _originalEventHandlers2[jsConvertedEventHandler];
+}
+
+/// Convert packed event handler into wrapper and pass it only the Dart [SyntheticEvent2] object converted from the
+/// [events.SyntheticEvent] event.
+_convertEventHandlers2(Map args) {
+  var zone = Zone.current;
+  args.forEach((propKey, value) {
+    var eventFactory = eventPropKeyToEventFactory2[propKey];
+    if (eventFactory != null && value != null) {
+      // Apply allowInterop here so that the function we store in [_originalEventHandlers]
+      // is the same one we'll retrieve from the JS props.
+      var reactDartConvertedEventHandler =
+          allowInterop((events.SyntheticEvent e, [_, __]) => zone.run(() {
+                value(eventFactory(e));
+              }));
+
+      args[propKey] = reactDartConvertedEventHandler;
+      _originalEventHandlers2[reactDartConvertedEventHandler] = value;
+    }
+  });
+}
+
 /// Wrapper for [SyntheticEvent].
+///
+/// TODO: Should we export the v2 of this factory, or was this never intended for public consumption:?
+@Deprecated('6.0.0')
 SyntheticEvent syntheticEventFactory(events.SyntheticEvent e) {
   return new SyntheticEvent(
       e.bubbles,
@@ -841,6 +979,9 @@ SyntheticEvent syntheticEventFactory(events.SyntheticEvent e) {
 }
 
 /// Wrapper for [SyntheticClipboardEvent].
+///
+/// TODO: Should we export the v2 of this factory, or was this never intended for public consumption:?
+@Deprecated('6.0.0')
 SyntheticClipboardEvent syntheticClipboardEventFactory(
     events.SyntheticClipboardEvent e) {
   return new SyntheticClipboardEvent(
@@ -860,6 +1001,9 @@ SyntheticClipboardEvent syntheticClipboardEventFactory(
 }
 
 /// Wrapper for [SyntheticKeyboardEvent].
+///
+/// TODO: Should we export the v2 of this factory, or was this never intended for public consumption:?
+@Deprecated('6.0.0')
 SyntheticKeyboardEvent syntheticKeyboardEventFactory(
     events.SyntheticKeyboardEvent e) {
   return new SyntheticKeyboardEvent(
@@ -889,6 +1033,9 @@ SyntheticKeyboardEvent syntheticKeyboardEventFactory(
 }
 
 /// Wrapper for [SyntheticFocusEvent].
+///
+/// TODO: Should we export the v2 of this factory, or was this never intended for public consumption:?
+@Deprecated('6.0.0')
 SyntheticFocusEvent syntheticFocusEventFactory(events.SyntheticFocusEvent e) {
   return new SyntheticFocusEvent(
       e.bubbles,
@@ -907,6 +1054,9 @@ SyntheticFocusEvent syntheticFocusEventFactory(events.SyntheticFocusEvent e) {
 }
 
 /// Wrapper for [SyntheticFormEvent].
+///
+/// TODO: Should we export the v2 of this factory, or was this never intended for public consumption:?
+@Deprecated('6.0.0')
 SyntheticFormEvent syntheticFormEventFactory(events.SyntheticFormEvent e) {
   return new SyntheticFormEvent(
       e.bubbles,
@@ -924,6 +1074,9 @@ SyntheticFormEvent syntheticFormEventFactory(events.SyntheticFormEvent e) {
 }
 
 /// Wrapper for [SyntheticDataTransfer].
+///
+/// TODO: Should we export the v2 of this factory, or was this never intended for public consumption:?
+@Deprecated('6.0.0')
 SyntheticDataTransfer syntheticDataTransferFactory(
     events.SyntheticDataTransfer dt) {
   if (dt == null) return null;
@@ -962,6 +1115,9 @@ SyntheticDataTransfer syntheticDataTransferFactory(
 }
 
 /// Wrapper for [SyntheticPointerEvent].
+///
+/// TODO: Should we export the v2 of this factory, or was this never intended for public consumption:?
+@Deprecated('6.0.0')
 SyntheticPointerEvent syntheticPointerEventFactory(
     events.SyntheticPointerEvent e) {
   return new SyntheticPointerEvent(
@@ -991,6 +1147,9 @@ SyntheticPointerEvent syntheticPointerEventFactory(
 }
 
 /// Wrapper for [SyntheticMouseEvent].
+///
+/// TODO: Should we export the v2 of this factory, or was this never intended for public consumption:?
+@Deprecated('6.0.0')
 SyntheticMouseEvent syntheticMouseEventFactory(events.SyntheticMouseEvent e) {
   SyntheticDataTransfer dt = syntheticDataTransferFactory(e.dataTransfer);
   return new SyntheticMouseEvent(
@@ -1023,6 +1182,9 @@ SyntheticMouseEvent syntheticMouseEventFactory(events.SyntheticMouseEvent e) {
 }
 
 /// Wrapper for [SyntheticTouchEvent].
+///
+/// TODO: Should we export the v2 of this factory, or was this never intended for public consumption:?
+@Deprecated('6.0.0')
 SyntheticTouchEvent syntheticTouchEventFactory(events.SyntheticTouchEvent e) {
   return new SyntheticTouchEvent(
       e.bubbles,
@@ -1047,6 +1209,9 @@ SyntheticTouchEvent syntheticTouchEventFactory(events.SyntheticTouchEvent e) {
 }
 
 /// Wrapper for [SyntheticUIEvent].
+///
+/// TODO: Should we export the v2 of this factory, or was this never intended for public consumption:?
+@Deprecated('6.0.0')
 SyntheticUIEvent syntheticUIEventFactory(events.SyntheticUIEvent e) {
   return new SyntheticUIEvent(
       e.bubbles,
@@ -1066,6 +1231,9 @@ SyntheticUIEvent syntheticUIEventFactory(events.SyntheticUIEvent e) {
 }
 
 /// Wrapper for [SyntheticWheelEvent].
+///
+/// TODO: Should we export the v2 of this factory, or was this never intended for public consumption:?
+@Deprecated('6.0.0')
 SyntheticWheelEvent syntheticWheelEventFactory(events.SyntheticWheelEvent e) {
   return new SyntheticWheelEvent(
       e.bubbles,
@@ -1091,6 +1259,10 @@ dynamic _findDomNode(component) {
       component is Component ? component.jsThis : component);
 }
 
+/// __DEPRECATED.__
+///
+/// Start using [setClientConfiguration2] when migrating from [Component] to [Component2].
+@Deprecated('6.0.0')
 void setClientConfiguration() {
   try {
     // Attempt to invoke JS interop methods, which will throw if the
@@ -1106,6 +1278,25 @@ void setClientConfiguration() {
   }
 
   setReactConfiguration(_reactDom, _registerComponent);
+  setReactDOMConfiguration(
+      ReactDom.render, ReactDom.unmountComponentAtNode, _findDomNode);
+}
+
+void setClientConfiguration2() {
+  try {
+    // Attempt to invoke JS interop methods, which will throw if the
+    // corresponding JS functions are not available.
+    React.isValidElement(null);
+    ReactDom.findDOMNode(null);
+    createReactDartComponentClass2(null, null, null);
+  } on NoSuchMethodError catch (_) {
+    throw new Exception('react.js and react_dom.js must be loaded.');
+  } catch (_) {
+    throw new Exception(
+        'Loaded react.js must include react-dart JS interop helpers.');
+  }
+
+  setReactConfiguration(_reactDom2, _registerComponent2);
   setReactDOMConfiguration(
       ReactDom.render, ReactDom.unmountComponentAtNode, _findDomNode);
 }
