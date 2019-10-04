@@ -5,6 +5,9 @@ authors:
   - Greg Littlefield <greg.littlefield@workiva.com>
   - Claire Sarsam <claire.sarsam@workiva.com>
   - Aaron Lademann <aaron.lademann@workiva.com>
+  - Keal Jones <keal.jones@workiva.com>
+  - Joe Bingham <joe.bingham@workiva.com>
+  - Sydney Jodon <sydney.jodon@workiva.com>
 description: Bindings of the ReactJS library for building interactive interfaces.
 homepage: https://github.com/cleandart/react-dart
 environment:
